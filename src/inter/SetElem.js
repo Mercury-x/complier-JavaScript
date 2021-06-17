@@ -9,9 +9,13 @@ import {
 export default class SetElem extends Stmt {
   constructor(x, y) {
     super();
+    // console.log(y)
     this.array = x.array;
     this.index = x.index;
     this.expr = y;
+    // console.log('setEmelem')
+    // console.log(x.type, y.type)
+    // console.log(TYPE2.numeric(x.type) && TYPE2.numeric(y.type))
     if (this.check(x.type, y.type) == null) this.error('type error');
   }
 

@@ -12,7 +12,6 @@ export class Constant extends Expr {
     if (tok instanceof Word) {
       super(tok, p);
     } else {
-      console.log(WORD.True)
       super(Number(tok), TYPE.Int);
     }
   }

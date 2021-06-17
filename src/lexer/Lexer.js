@@ -28,6 +28,7 @@ export class Lexer {
     this.words.else = Tag.ELSE;
     this.words.while = Tag.WHILE;
     this.words.do = Tag.DO;
+    this.words.for = Tag.FOR;
     this.words.break = Tag.BREAK;
     this.words.continue = Tag.CONTINUE;
     this.words.true = Tag.TRUE;
@@ -47,7 +48,8 @@ export class Lexer {
   readch = (c) => {
     this.readch2();
     if (this.peek != c) return false;
-    else return true;
+    this.peek = ' ';
+    return true;
   }
 
   scan = () => {
@@ -56,6 +58,7 @@ export class Lexer {
       else if (this.peek == '\n') line = line + 1;
       else break;
     }
+
 
     switch (this.peek) {
       case '&':
@@ -104,9 +107,10 @@ export class Lexer {
       do {
         b += this.peek;
         this.readch2();
+        if (this.peek == undefined) break;
       } while (isLetterOrDigit(this.peek) || this.peek == '_');
       let w = this.words[b];
-      if (w != undefined) return new Word(b, this.words[b]);
+      if (w != null) return new Word(b, this.words[b]);
       w = new Word(b, Tag.ID);
       this.words[b] = Tag.ID;
       return w;

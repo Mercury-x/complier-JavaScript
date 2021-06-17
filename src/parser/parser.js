@@ -2,6 +2,7 @@ import Access from "../inter/Access";
 import {
   line
 } from "../lexer/Lexer";
+import Array from "../symbols/Array";
 import Arith from "../inter/Arith";
 import {
   CFalse,
@@ -24,6 +25,7 @@ import {
 } from '../inter/stmt';
 import Unary from "../inter/Unary";
 import While from "../inter/While";
+import For from "../inter/For";
 import Tag from "../lexer/Tag";
 import {
   WORD
@@ -31,11 +33,13 @@ import {
 import Env from "../symbols/Env";
 import And from "../inter/And";
 import {
+  Type,
   TYPE
 } from "../symbols/Type";
 import SetElem from "../inter/SetElem";
 import {
-  nowChCode
+  nowChCode,
+  printNext
 } from "../tool/tool";
 import Token from "../lexer/Token";
 import Break from "../inter/Break";
@@ -64,10 +68,10 @@ export default class Parser {
   }
 
   match = (t) => {
-    console.log('match: ', this.look.tag, t)
-    console.log('##########1')
-    console.log(nowChCode())
-    console.log('##########2')
+    // console.log('match: ', this.look.tag, t)
+    // console.log('##########1')
+    // console.log(nowChCode())
+    // console.log('##########2')
     // console.log(this.look.tag, t, 'asdasd')
     if (this.look.tag === t) {
       this.move();
@@ -79,12 +83,16 @@ export default class Parser {
   program = () => {
     let s = this.block();
     // 生成中间代码////////////////
+    console.log('-----------------------------------------抽象语法树-----------------------------------------')
     console.log(s);
+    console.log('--------------------------------------------end--------------------------------------------')
+    console.log('------------------------------------------三地址码------------------------------------------')
     const begin = s.newlabel();
     const after = s.newlabel();
     s.emitlabel(begin);
     s.gen(begin, after);
     s.emitlabel(after);
+    console.log('--------------------------------------------end--------------------------------------------')
     /////////////////////////////
   }
 
@@ -102,6 +110,7 @@ export default class Parser {
   decls = () => {
     while (this.look.tag == Tag.BASIC) {
       // console.log('in decls')
+      // console.log('indeclsssssssssssssssssssssssssssssssssssssssssssss')
       let p = this.type();
       while (true) {
         let tok = this.look;
@@ -115,6 +124,7 @@ export default class Parser {
         else error("redefine of id " + tok.toString());
 
         this.used += p.width;
+
         if (this.look.tag == ';') {
           this.match(';');
           break;
@@ -128,23 +138,38 @@ export default class Parser {
   }
 
   type = () => {
-    const p = this.look;
+    console.log('intype************************')
+    console.log(this.look)
+
+    // 获得数组类型长度
+    let width = 0;
+    if (this.look.tag == TYPE.Int.tag) width = TYPE.Int.width;
+    else if (this.look.tag == TYPE.Float.tag) width = TYPE.Float.width;
+    else if (this.look.tag == TYPE.Char.tag) width = TYPE.Char.width;
+    else if (this.look.tag == TYPE.Bool.tag) width = TYPE.Bool.width;
+    const p = new Type(this.look.lexeme, this.look.tag, width);
     this.match(Tag.BASIC);
-    if (this.look.tag != '[')
+    if (this.look.tag != '[') {
       return p;
-    else
+    } else {
+      console.log('match ')
       return this.dims(p);
+    }
   }
 
   dims = (p) => {
     this.match('[');
+    console.log('findfindfindfindfindfindfindfindfindfindfindfind')
     const tok = this.look;
     this.match(Tag.NUM);
     this.match(']');
+    console.log('match ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]')
     if (this.look.tag == '[') {
       p = this.dims(p);
     }
-    return [tok, p];
+    console.log('tokkkkkkkkkkkkkkkkkk')
+    console.log(p);
+    return new Array(tok.value, p);
   }
 
   stmt = () => {
@@ -193,6 +218,47 @@ export default class Parser {
         updateStmtEnclousing(savedStmt);
         // Enclosing = savedStmt;
         return donode;
+      case Tag.FOR:
+        const fornode = new For();
+        savedStmt = Enclosing;
+        updateStmtEnclousing(fornode);
+        this.match(Tag.FOR);
+        this.match('(');
+        // 匹配第一个赋值语句（可以为空
+        console.log('look')
+        console.log(this.look)
+        if (this.look.tag != ';') {
+          let t = this.look;
+          this.match(Tag.ID);
+          let id = this.top.get(t);
+          this.match('=');
+          s1 = new Set(id, this.bool());
+        } else {
+          s1 = stmtNull;
+        }
+        // 匹配判断
+        console.log(this.look)
+        this.match(';')
+        x = this.bool();
+        // 匹配第二个赋值语句（可以为空
+        this.match(';')
+        if (this.look.tag != ';') {
+          let t = this.look;
+          this.match(Tag.ID);
+          let id = this.top.get(t);
+          this.match('=');
+          s2 = new Set(id, this.bool());
+        } else {
+          this.match(';')
+          s2 = stmtNull;
+        }
+        console.log('look')
+        console.log(this.look)
+        this.match(')');
+        s = this.stmt();
+        fornode.init(x, s1, s2, s);
+        updateStmtEnclousing(savedStmt);
+        return fornode;
       case Tag.BREAK:
         this.match(Tag.BREAK);
         this.match(';');
@@ -209,7 +275,8 @@ export default class Parser {
   }
 
   stmts = () => {
-    // console.log(this.look.tag, Tag.BASIC)
+    console.log('in stmts')
+    console.log(this.look)
     if (this.look.tag === Tag.BASIC)
       this.decls();
     if (this.look.tag === '}')
@@ -226,8 +293,8 @@ export default class Parser {
     this.match(Tag.ID);
     // console.log('match sucess')
     let id = this.top.get(t);
-    // console.log('id: ' + id)
-    // console.log(this.top)
+    console.log(id)
+    console.log(this.top)
     if (id == null) {
       this.error(t.toString() + " undeclared");
       throw new Error(t.toString() + " undeclared")
@@ -236,11 +303,13 @@ export default class Parser {
       this.move();
       stmt = new Set(id, this.bool());
     } else {
+      console.log(id)
+      console.log('in create id-------------------------------------------------------')
       const x = this.offset(id);
       this.match('=');
       stmt = new SetElem(x, this.bool());
     }
-    console.log(nowChCode())
+    // console.log(nowChCode())
     this.match(';');
     return stmt;
   }
@@ -248,7 +317,7 @@ export default class Parser {
   bool = () => {
     let x = this.join();
     while (this.look.tag == Tag.OR) {
-      let tok = this.look;
+      let tok = new Token(this.look.tag);
       this.move();
       x = new Or(tok, x, this.join());
     }
@@ -258,8 +327,9 @@ export default class Parser {
   join = () => {
     let x = this.equality();
     while (this.look.tag == Tag.AND) {
-      let tok = this.look;
+      let tok = new Token(this.look.tag);
       this.move();
+      console.log('loo2')
       x = new And(tok, x, this.equality());
     }
     return x;
@@ -267,8 +337,10 @@ export default class Parser {
 
   equality = () => {
     let x = this.rel();
+    console.log('loo1')
+    console.log(this.look)
     while (this.look.tag == Tag.EQ || this.look.tag == Tag.NE) {
-      const tok = this.look;
+      const tok = new Token(this.look.tag);
       this.move();
       x = new Rel(tok, x, this.rel());
     }
@@ -277,14 +349,14 @@ export default class Parser {
 
   rel = () => {
     let x = this.expr();
-    console.log('tag')
-    console.log(this.look.tag)
+    // console.log('tag')
+    // console.log(this.look.tag)
     switch (this.look.tag) {
       case '<':
       case Tag.LE:
       case Tag.GE:
       case '>':
-        const tok = this.look;
+        const tok = new Token(this.look.tag);
         this.move();
         return new Rel(tok, x, this.expr());
       default:
@@ -295,7 +367,8 @@ export default class Parser {
   expr = () => {
     let x = this.term();
     while (this.look.tag == '+' || this.look.tag == '-') {
-      const tok = this.look;
+      console.log('in if')
+      const tok = new Token(this.look.tag);
       this.move();
       x = new Arith(tok, x, this.term());
     }
@@ -305,7 +378,7 @@ export default class Parser {
   term = () => {
     let x = this.unary();
     while (this.look.tag == '*' || this.look.tag == '/') {
-      const tok = this.look;
+      const tok = new Token(this.look.tag);
       this.move();
       x = new Arith(tok, x, this.unary());
     }
@@ -313,11 +386,13 @@ export default class Parser {
   }
 
   unary = () => {
+    console.log('loo1')
+    console.log(this.look.tag)
     if (this.look.tag == '-') {
       this.move();
       return new Unary(WORD.minus, this.unary());
     } else if (this.look.tag == '!') {
-      const tok = this.look;
+      const tok = new Token(this.look.tag);
       this.move();
       return new Not(tok, this.unary());
     } else
@@ -354,7 +429,7 @@ export default class Parser {
         if (id == null)
           error(this.look.toString() + " undeclared");
         this.move();
-        console.log(id)
+        // console.log(id)
         if (this.look.tag != '[')
           return id;
         else
@@ -366,7 +441,14 @@ export default class Parser {
     }
   }
 
+  /**
+   * 处理数组赋值语句
+   * 
+   * @param {Id} a - 传入的标识符 
+   * @returns 
+   */
   offset = (a) => {
+    console.log('------------------------------------------in offset------------------------------------------------------------------------------------------------------------')
     let i; // expr
     let w; // expr
     let t1, t2; // expr
@@ -377,12 +459,12 @@ export default class Parser {
     i = this.bool();
     this.match(']');
     try {
-      // type = this.type.of;
+      type = type.of;
     } catch (e) {
       // console.log(e);
       error("this object doesn't have so many dimensions");
     }
-    w = new Constant(this.type.width);
+    w = new Constant(type.width);
     t1 = new Arith(new Token('*'), i, w);
     loc = t1;
     // console.log('isisisiisisisisiisisisisiisisisisiisisisisiisisisisiisisisisiisisisisiisisisisiisisisisiisisisisiisisisisiisisisisiisisisisiisisis')
@@ -391,7 +473,7 @@ export default class Parser {
       i = this.bool();
       this.match(']');
       try {
-        // type = this.type.of;
+        type = type.of;
       } catch (e) {
         // console.log(e);
         error("this object doesn't have so many dimensions");
@@ -401,6 +483,8 @@ export default class Parser {
       t2 = new Arith(new Token('+'), loc, t1);
       loc = t2;
     }
+    console.log('create access-------------------------------------------')
+    console.log(type)
     return new Access(a, loc, type);
   }
 }

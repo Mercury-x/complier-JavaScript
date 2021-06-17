@@ -6,7 +6,7 @@ export default class Or extends Logical {
   }
 
   jumping = (t, f) => {
-    label = t != 0 ? t : this.newlabel();
+    const label = t != 0 ? t : this.newlabel();
     this.expr1.jumping(label, 0);
     this.expr2.jumping(t, f);
     if (t == 0)

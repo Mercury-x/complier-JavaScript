@@ -21,7 +21,7 @@ export let stmtNull = new Stmt();
 
 export function updateStmtEnclousing(a) {
   Enclosing = a;
-  console.log('**********change enclosing************')
-  console.log(a)
-  console.log('**************************************')
+  // console.log('**********change enclosing************')
+  // console.log(a)
+  // console.log('**************************************')
 }

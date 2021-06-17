@@ -1,13 +1,19 @@
 import Tag from "../lexer/Tag";
-import { Word, WORD } from "../lexer/Word";
+import {
+  Word,
+  WORD
+} from "../lexer/Word";
 
 export class Type extends Word {
+  width = 0;
+
   constructor(s, Tag, w) {
     super(s, Tag);
     this.width = w;
   }
 
   numeric = (p) => {
+    // console.log(p)
     if (p.tag == TYPE.Char.tag || p.tag == TYPE.Int.tag || p.tag == TYPE.Float.tag) return true;
     else return false
   }

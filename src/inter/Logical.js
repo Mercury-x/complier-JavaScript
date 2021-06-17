@@ -21,8 +21,8 @@ export default class Logical extends Expr {
     super(tok, null);
     this.expr1 = x1;
     this.expr2 = x2;
-    console.log(x1.type)
-    console.log(x2.type)
+    // console.log(x1.type)
+    // console.log(x2.type)
     this.type = TYPE.Bool;
     // this.check(this.expr1.type, this.expr2.type);
     if (this.type == null)
